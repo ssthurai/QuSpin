@@ -100,52 +100,13 @@ def anti_commutator(H1,H2):
 		return H1.dot(H2) + H2.dot(H1)
 
 
+
+
 class HamiltonianEfficiencyWarning(Warning):
 	pass
 
 #global names:
 supported_dtypes=tuple([_np.float32, _np.float64, _np.complex64, _np.complex128])
-
-def _check_static(sub_list):
-	"""Checks format of static list. """
-	if (type(sub_list) in [list,tuple]) and (len(sub_list) == 2):
-		if type(sub_list[0]) is not str: raise TypeError('expecting string type for opstr')
-		if type(sub_list[1]) in [list,tuple]:
-			for sub_sub_list in sub_list[1]:
-				if (type(sub_sub_list) in [list,tuple]) and (len(sub_sub_list) > 0):
-					for element in sub_sub_list:
-						if not _np.isscalar(element): raise TypeError('expecting scalar elements of indx')
-				else: raise TypeError('expecting list for indx') 
-		else: raise TypeError('expecting a list of one or more indx')
-		return True
-	else: 
-		return False
-	
-
-def _check_dynamic(sub_list):
-	"""Checks format of dynamic list. """
-	if (type(sub_list) in [list,tuple]):
-		if (len(sub_list) == 4):
-			if type(sub_list[0]) is not str: raise TypeError('expecting string type for opstr')
-			if type(sub_list[1]) in [list,tuple]:
-				for sub_sub_list in sub_list[1]:
-					if (type(sub_sub_list) in [list,tuple]) and (len(sub_sub_list) > 0):
-						for element in sub_sub_list:
-							if not _np.isscalar(element): raise TypeError('expecting scalar elements of indx')
-					else: raise TypeError('expecting list for indx') 
-			else: raise TypeError('expecting a list of one or more indx')
-			if not hasattr(sub_list[2],"__call__"): raise TypeError('expecting callable object for driving function')
-			if type(sub_list[3]) not in [list,tuple]: raise TypeError('expecting list for function arguments')
-			return True
-		elif (len(sub_list) == 3):
-			if not hasattr(sub_list[1],"__call__"): raise TypeError('expecting callable object for driving function')
-			if type(sub_list[2]) not in [list,tuple]: raise TypeError('expecting list for function arguments')
-			return False
-		elif (len(sub_list) == 2):
-			if not hasattr(sub_list[1],"__call__"): raise TypeError('expecting callable object for driving function')
-			return False
-	else:
-		raise TypeError('expecting list with object, driving function, and function arguments')
 
 
 def _check_almost_zero(matrix):
@@ -249,28 +210,7 @@ class hamiltonian(object):
 			self._dtype=dtype
 		
 
-
-		if type(static_list) in [list,tuple]:
-			static_opstr_list=[]
-			static_other_list=[]
-			for ele in static_list:
-				if _check_static(ele):
-					static_opstr_list.append(ele)
-				else:
-					static_other_list.append(ele)
-		else: 
-			raise TypeError('expecting list/tuple of lists/tuples containing opstr and list of indx')
-
-		if type(dynamic_list) in [list,tuple]:
-			dynamic_opstr_list=[]
-			dynamic_other_list=[]
-			for ele in dynamic_list:
-				if _check_dynamic(ele):
-					dynamic_opstr_list.append(ele)
-				else: 
-					dynamic_other_list.append(ele)					
-		else: 
-			raise TypeError('expecting list/tuple of lists/tuples containing opstr and list of indx, functions, and function args')
+		(static_opstr_list,static_other_list,dynamic_opstr_list,dynamic_other_list) = _process_operator_lists(static_list,dynamic_list)
 
 		# need for check_symm
 		self._static_opstr_list = static_opstr_list

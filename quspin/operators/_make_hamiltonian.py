@@ -8,131 +8,6 @@ from ._functions import function
 
 
 
-
-def _consolidate_static(static_list):
-	eps = 10 * _np.finfo(_np.float64).eps
-
-	static_dict={}
-	for opstr,bonds in static_list:
-		if opstr not in static_dict:
-			static_dict[opstr] = {}
-
-		for bond in bonds:
-			J = bond[0]
-			indx = tuple(bond[1:])
-			if indx in static_dict[opstr]:
-				static_dict[opstr][indx] += J
-			else:
-				static_dict[opstr][indx] = J
-
-				
-
-	static_list = []
-	for opstr,opstr_dict in static_dict.items():
-		for indx,J in opstr_dict.items():
-			if _np.abs(J) > eps:
-				static_list.append((opstr,indx,J))
-
-
-	return static_list
-
-
-def _consolidate_dynamic(dynamic_list):
-	eps = 10 * _np.finfo(_np.float64).eps
-	
-	dynamic_dict={}
-	for opstr,bonds,f,f_args in dynamic_list:
-		f_args = tuple(f_args)
-		if (opstr,f,f_args) not in dynamic_dict:
-			dynamic_dict[(opstr,f,f_args)] = {}
-
-		for bond in bonds:
-			J = bond[0]
-			indx = tuple(bond[1:])
-			if indx in dynamic_dict[(opstr,f,f_args)]:
-				dynamic_dict[(opstr,f,f_args)][indx] += J
-			else:
-				dynamic_dict[(opstr,f,f_args)][indx] = J
-
-
-	dynamic_list = []
-	for (opstr,f,f_args),opstr_dict in dynamic_dict.items():
-		for indx,J in opstr_dict.items():
-			if _np.abs(J) > eps:
-				dynamic_list.append((opstr,indx,J,f,f_args))
-
-
-	return dynamic_list
-
-
-
-# def _consolidate_bonds(bonds):
-# 	eps = _np.finfo(_np.float64).eps
-# 	l = len(bonds)
-# 	i=0
-# 	while(i < l):
-# 		j = 0
-# 		while(j < l):
-# 			if i != j:
-# 				if bonds[i][1:] == bonds[j][1:]:
-# 					bonds[i][0] += bonds[j][0]
-# 					del bonds[j]
-# 					if j < i: i -= 1
-# 					l = len(bonds)
-# 			j += 1
-# 		i += 1
-
-
-# 	i=0
-# 	while(i < l):
-# 		if abs(bonds[i][0]) < 10 * eps:
-# 			del bonds[i]
-# 			l = len(bonds)
-# 			continue
-
-# 		i += 1
-					
-
-
-
-# def _consolidate_static(static_list):
-# 	l = len(static_list)
-# 	i=0
-# 	while(i < l):
-# 		j = 0
-# 		while(j < l):
-# 			if i != j:
-# 				opstr1,bonds1 = tuple(static_list[i])
-# 				opstr2,bonds2 = tuple(static_list[j])
-# 				if opstr1 == opstr2:
-# 					del static_list[j]
-# 					static_list[i][1].extend(bonds2)
-# 					_consolidate_bonds(static_list[i][1])
-# 					l = len(static_list)
-# 			j += 1
-# 		i += 1
-
-
-# def _consolidate_dynamic(dynamic_list):
-# 	l = len(dynamic_list)
-# 	i = 0
-
-# 	while(i < l):
-# 		j = 0
-# 		while(j < l):
-# 			if i != j:
-# 				opstr1,bonds1,f1,f1_args = tuple(dynamic_list[i])
-# 				opstr2,bonds2,f2,f2_args = tuple(dynamic_list[j])
-# 				if (opstr1 == opstr2) and (f1 == f2) and (f1_args == f2_args):
-# 					del dynamic_list[j]
-# 					dynamic_list[i][1].extend(bonds2)
-# 					_consolidate_bonds(dynamic_list[i][1])
-# 					l = len(dynamic_list)
-# 			j += 1
-# 		i += 1
-
-
-
 def test_function(func,func_args):
 	t = _np.cos( (_np.pi/_np.exp(0))**( 1.0/_np.euler_gamma ) )
 	func_val=func(t,*func_args)
@@ -161,8 +36,7 @@ def make_static(basis,static_list,dtype):
 	"""
 	Ns=basis.Ns
 	H = _sp.csr_matrix((Ns,Ns),dtype=dtype)
-	static_list = _consolidate_static(static_list)
-	for opstr,indx,J in static_list:
+	for J,opstr,indx in static_list:
 		# print(opstr,bond)
 		ME,row,col = basis.Op(opstr,indx,J,dtype)
 		Ht=_sp.csr_matrix((ME,(row,col)),shape=(Ns,Ns),dtype=dtype) 
@@ -197,8 +71,7 @@ def make_dynamic(basis,dynamic_list,dtype):
 	"""
 	Ns=basis.Ns
 	dynamic={}
-	dynamic_list = _consolidate_dynamic(dynamic_list)
-	for opstr,indx,J,f,f_args in dynamic_list:
+	for J,f,f_args,opstr,indx in dynamic_list:
 		if _np.isscalar(f_args): raise TypeError("function arguments must be array type")
 		test_function(f,f_args)
 
@@ -218,21 +91,3 @@ def make_dynamic(basis,dynamic_list,dtype):
 
 	return dynamic
 
-
-
-
-
-def make_op(basis,opstr,bonds,dtype):
-	Ns=basis.Ns
-	H=_sp.csr_matrix(([],([],[])),shape=(Ns,Ns),dtype=dtype)
-	for bond in bonds:
-		J=bond[0]
-		indx=bond[1:]
-		ME,row,col = basis.Op(opstr,indx,J,dtype)
-		Ht=_sp.csr_matrix((ME,(row,col)),shape=(Ns,Ns),dtype=dtype) 
-		H=H+Ht
-		del Ht
-		H.sum_duplicates() # sum duplicate matrix elements
-		H.eliminate_zeros() # remove all zero matrix elements
-	
-	return H
