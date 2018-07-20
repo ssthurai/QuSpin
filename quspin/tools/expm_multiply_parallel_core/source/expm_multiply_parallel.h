@@ -91,12 +91,18 @@ void _expm_multiply(const I n,
 
 	T2  c1,c2,c3;
 	bool flag=false;
-	I rco[128];
-	T3 vco[128];
+	int nthread = omp_get_max_threads();
+	I * rco = new I[nthread];
+	T3 * vco = new T3[nthread];
+
+	for(int tid=0;tid<nthread;tid++){
+		rco[tid] = 0;
+		vco[tid] = 0;
+	}
 	
-	#pragma omp parallel shared(c1,c2,c3,flag,F,B1,B2,rco,vco)
+	#pragma omp parallel shared(nthread,c1,c2,c3,flag,F,B1,B2,rco,vco)
 	{
-		int nthread = omp_get_num_threads();
+
 		int threadn = omp_get_thread_num();
 		I items_per_thread = n/nthread;
 		I begin = items_per_thread * threadn;
@@ -169,6 +175,11 @@ void _expm_multiply(const I n,
 			}
 		}
 	}
+
+	delete [] rco;
+	delete [] vco;
+	rco = NULL;
+	vco = NULL;
 }
 
 #endif
